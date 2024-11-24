@@ -9,12 +9,18 @@ import ma.xproce.inventoryservice.dao.entities.Creator;
 import ma.xproce.inventoryservice.dao.entities.Video;
 import ma.xproce.inventoryservice.dao.repositories.CreatorRepository;
 import ma.xproce.inventoryservice.dao.repositories.VideoRepository;
+import ma.xproce.inventoryservice.service.CreatorManager;
+import ma.xproce.inventoryservice.service.VideoManager;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SubscriptionMapping;
 import org.springframework.stereotype.Controller;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Stream;
 
 @Controller
 public class VideoGraphQlController {
@@ -22,6 +28,8 @@ public class VideoGraphQlController {
     private VideoRepository videoRepository;
     private CreatorMappers creatorMapper;
     private VideoMapper videoMapper;
+    private CreatorManager creatorManager;
+    private VideoManager videoManager;
 
     VideoGraphQlController(CreatorRepository creatorRepository, VideoRepository videoRepository, CreatorMappers creatorMapper, VideoMapper videoMapper) {
         this.creatorRepository = creatorRepository;
@@ -69,7 +77,38 @@ public class VideoGraphQlController {
         // Save and return the video
         return videoRepository.save(videoDAO);
     }
+    @SubscriptionMapping
+    public Flux<Video> notifyVideoChange() {
+        return Flux.fromStream(
+                Stream.generate(() -> {
+                    try {
+                        // Simulate delay for a video update every second
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
 
+                    // Create a new random Creator
+                    CreatorRequest creatorRequest = CreatorRequest.builder()
+                            .name("xxxx" + new Random().nextInt())  // Generate a random name
+                            .email("xxxx@gmail.com")
+                            .build();
+
+                    // Save the Creator
+                    Creator creator = creatorManager.save(creatorMapper.toCreator(creatorRequest));
+
+                    // Find a video by ID (assuming the ID is 1L here)
+                    Video video = videoManager.findById(1L)
+                            .orElseThrow(() -> new RuntimeException("Video not found"));
+
+                    // Update the video with the new creator
+                    video.setCreator(creator);
+                    videoManager.updateVideo(video);  // Persist the updated video
+
+                    return video;  // Return the updated video to be emitted
+                })
+        );
+    }
 
 
 }

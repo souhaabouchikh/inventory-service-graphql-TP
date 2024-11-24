@@ -20,6 +20,7 @@ public class CreatorManager implements CreatorService {
 
     @Override
     public Creator save(Creator creator) {
+
         return creatorRepository.save(creator);
     }
 
